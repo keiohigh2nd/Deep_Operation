@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 import numpy as np
-import cv2,random
+import cv2, random
 from Arm import Arm
 import usb.core, usb.util, time
 import move_arms
@@ -52,7 +52,7 @@ def calc_dist(x1,y1,x2,y2):
        return 1
 
 def random_position_init(arm1, arm2, objs, frame_id):
-    tmp_random = random.randint(1,1000)
+    tmp_random = random.randint(1000,10000)
     #Set random movements(Move Limitation)
     arm1.set_random_position(1)
     arm2.set_random_position(2)
@@ -80,28 +80,28 @@ def random_position_init(arm1, arm2, objs, frame_id):
         print 'Catch and GO'
 	arm2.action(8, 0, 0, 2)
 
-    f = open("desc/%s_%s.txt"%(frame_id, tmp_random), "w")
+    f = open("desc/%s_%s.txt"%(frame_id,tmp_random), "w")
     #Decide Actions
     nearest_arm_id = calc_dist(d1_arm1_x, d1_arm1_y, d1_arm2_x, d1_arm2_y) 
     if nearest_arm_id == 1:
 	#適切な行動をここで取れ
 	print 'A'
         #Move A to remove top and B should Remove Bottom ---> Multithreading
-	arm1.action(6, abs(d1_arm1_x)/10, abs(d1_arm1_y)/10, 1)  #consider gradients
-        arm2.action(7, abs(d2_arm2_x)/10, abs(d2_arm2_y)/10, 2)  #consider gradients
-        f.write('6,7,1')
+	arm1.action(6, -abs(d1_arm1_x)/10, -abs(d1_arm1_y)/10, 1)  #consider gradients
+        arm2.action(7, -abs(d2_arm2_x)/10, -abs(d2_arm2_y)/10, 2)  #consider gradients
+        f.write('6,7,-1')
     else:
 	print 'B'
 	#Move B to remove top and A should Remove TOP --> multithreading
-	arm1.action(5, abs(d2_arm1_x)/10, abs(d2_arm1_y)/10,1)
-	arm2.action(5, abs(d1_arm2_x)/10, abs(d1_arm2_y)/10,2)
-        f.write('6,7,1')
+	arm1.action(5, -abs(d2_arm1_x)/10, -abs(d2_arm1_y)/10,1)
+	arm2.action(5, -abs(d1_arm2_x)/10, -abs(d1_arm2_y)/10,2)
+        f.write('6,7,-1')
 
     f.close()
     #FIX S-dash
     canvas_image = init_frame(rows, cols, obj_pos)
     image = fix_frames(arm1, arm2, canvas_image)
-    cv2.imwrite('result/s_dash_%s_%s.jpg'%(frame_id, tmp_random), image)
+    cv2.imwrite('result/s_dash_%s_%s.jpg'%(frame_id, tmp_random) ,image)
 
 if __name__ == "__main__":
     cols = 1024
@@ -117,7 +117,6 @@ if __name__ == "__main__":
     canvas_image = init_frame(rows, cols, obj_pos)
     image = fix_frames(arm1, arm2, canvas_image)
 
-    cv2.imwrite('result/ss-dash.jpg', image)
     canvas_image = init_frame(rows, cols, obj_pos)
     image = fix_frames(arm1, arm2, canvas_image)
 
