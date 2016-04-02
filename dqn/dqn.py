@@ -10,11 +10,11 @@ import prepare_dataset
 class DQN_class:
     gamma = 0.99  
     initial_exploration = 100 
-    replay_size = 32  
+    replay_size = 1 
     target_model_update_freq = 10**4  
     data_size = 20
 
-    def __init__(self, enable_controller=[0, 3, 4]):
+    def __init__(self, enable_controller=[0, 1,2,3,4,5,6,7,8,9]):
         self.num_of_actions = len(enable_controller)
         self.enable_controller = enable_controller 
 
@@ -22,10 +22,10 @@ class DQN_class:
 
         print "Model Building"
         self.model = FunctionSet(
-            l1=F.Convolution2D(3, 32, ksize=8, stride=4, nobias=False, wscale=np.sqrt(2)),
-            l2=F.Convolution2D(32, 64, ksize=4, stride=2, nobias=False, wscale=np.sqrt(2)),
-            l3=F.Convolution2D(64, 64, ksize=3, stride=1, nobias=False, wscale=np.sqrt(2)),
-            l4=F.Linear(3136, 512, wscale=np.sqrt(2)),
+            l1=F.Convolution2D(3, 64, ksize=18, stride=8, nobias=False, wscale=np.sqrt(2)),
+            l2=F.Convolution2D(64, 128, ksize=14, stride=6, nobias=False, wscale=np.sqrt(2)),
+            l3=F.Convolution2D(128, 64, ksize=3, stride=2, nobias=False, wscale=np.sqrt(2)),
+            l4=F.Linear(4032, 512, wscale=np.sqrt(2)),
             q_value=F.Linear(512, self.num_of_actions,
                              initialW=np.zeros((self.num_of_actions, 512),
                                                dtype=np.float32))
@@ -38,7 +38,7 @@ class DQN_class:
         self.optimizer.setup(self.model.collect_parameters())
 
         # History Data :  D=[s, a, r, s_dash, end_episode_flag]
-        self.D = [np.zeros((self.data_size, 800, 1024, 3), dtype=np.uint8),
+        self.D = [np.zeros((self.data_size, 3, 800, 1024), dtype=np.uint8),
                   np.zeros(self.data_size, dtype=np.uint8),
                   np.zeros((self.data_size, 1), dtype=np.int8),
                   np.zeros((self.data_size, 3, 84, 84), dtype=np.uint8),
@@ -53,25 +53,31 @@ class DQN_class:
 
         # Generate Target Signals
         tmp = self.Q_func_target(s_dash)  # Q(s',*)
-        tmp = list(map(np.max, tmp.data.get()))  # max_a Q(s',a)
+        #tmp = list(map(np.max, tmp.data.get()))  # max_a Q(s',a)
+        tmp = list(map(np.max, tmp.data))  # max_a Q(s',a)
         max_Q_dash = np.asanyarray(tmp, dtype=np.float32)
-        target = np.asanyarray(Q.data.get(), dtype=np.float32)
+        #target = np.asanyarray(Q.data.get(), dtype=np.float32)
+        target = np.asanyarray(Q.data, dtype=np.float32)
 
         for i in xrange(num_of_batch):
             if not episode_end[i][0]:
-                tmp_ = np.sign(Reward[i]) + self.gamma * max_Q_dash[i]
+                tmp_ = np.sign(int(Reward)) + self.gamma * max_Q_dash[i]
+                #tmp_ = np.sign(Reward[i]) + self.gamma * max_Q_dash[i]
             else:
-                tmp_ = np.sign(Reward[i])
+                #tmp_ = np.sign(Reward[i])
+                tmp_ = np.sign(int(Reward))
 
-            action_index = self.action_to_index(action[i])
+            action_index = self.action_to_index(int(action))
+            #action_index = self.action_to_index(action[i])
             target[i, action_index] = tmp_
 
         # TD-error clipping
-        td = Variable(cuda.to_gpu(target)) - Q  # TD error
+        #td = Variable(cuda.to_gpu(target)) - Q  # TD error
+        td = Variable(target) - Q  # TD error
         td_tmp = td.data + 1000.0 * (abs(td.data) <= 1)  # Avoid zero division
         td_clip = td * (abs(td.data) <= 1) + td/abs(td_tmp) * (abs(td.data) > 1)
 
-        zero_val = Variable(cuda.to_gpu(np.zeros((self.replay_size, self.num_of_actions), dtype=np.float32)))
+        zero_val = Variable(np.zeros((self.replay_size, self.num_of_actions), dtype=np.float32))
         loss = F.mean_squared_error(td_clip, zero_val)
         return loss, Q
 
@@ -163,4 +169,5 @@ if __name__ == "__main__":
     DQN = DQN_class()
     state, state_dash, action, rewards = prepare_dataset.init()
     print state[0].shape
-    DQN.forward(state[0], action[0][0], rewards[0], state_dash, 'False')
+    print np.sign(int(rewards[0]))
+    DQN.forward(state[0], action[0][0], rewards[0], state_dash[0], 'False')
